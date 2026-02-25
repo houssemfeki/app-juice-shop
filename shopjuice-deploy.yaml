@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: juiceshop
-        image: 1houssem/juiceshop:v1
+        image: 1houssem/juiceshop:latest
         ports:
         - containerPort: 3000
