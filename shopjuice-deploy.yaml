@@ -21,24 +21,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: juiceshop
-
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: juiceshop
-
   template:
     metadata:
       labels:
         app: juiceshop
-
     spec:
+      imagePullSecrets:          # ← au même niveau que containers
+        - name: registry-credentials
       containers:
         - name: juiceshop
           image: registry.local:5443/juiceshop:latest
           ports:
             - containerPort: 3000
-
-      imagePullSecrets:
-        - name: registry-credentials
