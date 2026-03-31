@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: shopjuice-service
 spec:
-  type: NodePort
+  type: LoadBalancer  #NodePort
   selector:
     app: juiceshop
   ports:
   - port: 80
     targetPort: 3000
-    nodePort: 30090
+#    nodePort: 30090
