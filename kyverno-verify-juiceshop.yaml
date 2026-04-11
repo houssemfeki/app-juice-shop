@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-juiceshop-signature
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: verify-cosign-signature
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            namespaces:
+              - default
+      verifyImages:
+        - imageReferences:
+            - "registry.local:5443/juiceshop:*"
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERcseHojyVISjTekgbxLnzoogJ+YN
+                      nB7HPgoFSY7tDOhsH46AFgbJmBizJYtdIXwi4evFfdBSlDxZ+v1MAc0KLQ==
+                      -----END PUBLIC KEY-----
+                    ctlog:
+                      ignoreSCT: true
+                    rekor:
+                      ignoreTlog: true
