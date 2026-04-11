@@ -1,0 +1,65 @@
+---
+- name: Verify JuiceShop deployment
+  hosts: k8s_master
+  gather_facts: no
+  vars:
+    kubeconfig: /home/vagrant/.kube/config
+    namespace: default
+    app_label: app=juiceshop
+    min_replicas: 2
+    registry: "registry.local:5443"
+    image_digest: "{{ image_digest }}"
+  tasks:
+    - name: Attendre pods Ready
+      command: >
+        kubectl wait pods -l {{ app_label }}
+        -n {{ namespace }}
+        --for=condition=Ready --timeout=120s
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      retries: 5
+      delay: 15
+      register: wait_pods
+      until: wait_pods.rc == 0
+
+    - name: Nombre de replicas disponibles
+      command: >
+        kubectl get deployment juiceshop
+        -n {{ namespace }}
+        -o jsonpath='{.status.availableReplicas}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: replicas
+
+    - name: Vérifier replicas minimum
+      assert:
+        that:
+          - replicas.stdout | int >= min_replicas
+        fail_msg: "ECHEC : {{ replicas.stdout }} replica(s), minimum {{ min_replicas }}"
+        success_msg: "OK : {{ replicas.stdout }} replica(s)"
+
+    - name: Image déployée
+      command: >
+        kubectl get deployment juiceshop
+        -n {{ namespace }}
+        -o jsonpath='{.spec.template.spec.containers[0].image}'
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: deployed_image
+
+    - name: Vérifier digest
+      assert:
+        that:
+          - image_digest in deployed_image.stdout
+        fail_msg: "ECHEC digest : attendu {{ image_digest }}, trouvé {{ deployed_image.stdout }}"
+        success_msg: "OK digest confirmé"
+
+    - name: Pods sur les workers
+      command: >
+        kubectl get pods -l {{ app_label }}
+        -n {{ namespace }} -o wide
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: pods_wide
+    - debug:
+        var: pods_wide.stdout_lines
