@@ -1,0 +1,42 @@
+---
+- name: Apply Kyverno policy for JuiceShop
+  hosts: k8s_master
+  gather_facts: no
+  vars:
+    policy_local_path: "{{ playbook_dir }}/../kyverno-verify-juiceshop.yaml"
+    policy_remote_path: /tmp/kyverno-verify-juiceshop.yaml
+    kubeconfig: /home/vagrant/.kube/config
+  tasks:
+    - name: Copier la policy vers le master
+      copy:
+        src: "{{ policy_local_path }}"
+        dest: "{{ policy_remote_path }}"
+        mode: '0644'
+
+    - name: Appliquer la ClusterPolicy
+      command: kubectl apply -f {{ policy_remote_path }}
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: apply_result
+      changed_when: >
+        'created' in apply_result.stdout or
+        'configured' in apply_result.stdout
+
+    - name: Attendre Ready
+      command: >
+        kubectl wait clusterpolicy verify-juiceshop-signature
+        --for=condition=Ready --timeout=60s
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      retries: 3
+      delay: 10
+      register: wait_result
+      until: wait_result.rc == 0
+
+    - name: Statut final
+      command: kubectl get clusterpolicy verify-juiceshop-signature -o wide
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: status
+    - debug:
+        var: status.stdout_lines
