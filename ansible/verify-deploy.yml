@@ -4,16 +4,18 @@
   gather_facts: no
   vars:
     kubeconfig: /home/vagrant/.kube/config
-    namespace: default
+    # renommé pour éviter le warning "reserved name: namespace"
+    k8s_namespace: default
     app_label: app=juiceshop
     min_replicas: 2
     registry: "registry.local:5443"
     image_digest: "{{ image_digest }}"
+
   tasks:
     - name: Attendre pods Ready
       command: >
         kubectl wait pods -l {{ app_label }}
-        -n {{ namespace }}
+        -n {{ k8s_namespace }}
         --for=condition=Ready --timeout=120s
       environment:
         KUBECONFIG: "{{ kubeconfig }}"
@@ -21,15 +23,18 @@
       delay: 15
       register: wait_pods
       until: wait_pods.rc == 0
+      # skip en mode check car kubectl ne tourne pas
+      when: not ansible_check_mode
 
     - name: Nombre de replicas disponibles
       command: >
         kubectl get deployment juiceshop
-        -n {{ namespace }}
+        -n {{ k8s_namespace }}
         -o jsonpath='{.status.availableReplicas}'
       environment:
         KUBECONFIG: "{{ kubeconfig }}"
       register: replicas
+      when: not ansible_check_mode
 
     - name: Vérifier replicas minimum
       assert:
@@ -37,15 +42,18 @@
           - replicas.stdout | int >= min_replicas
         fail_msg: "ECHEC : {{ replicas.stdout }} replica(s), minimum {{ min_replicas }}"
         success_msg: "OK : {{ replicas.stdout }} replica(s)"
+      # skip en mode check car replicas n'est pas défini
+      when: not ansible_check_mode
 
     - name: Image déployée
       command: >
         kubectl get deployment juiceshop
-        -n {{ namespace }}
+        -n {{ k8s_namespace }}
         -o jsonpath='{.spec.template.spec.containers[0].image}'
       environment:
         KUBECONFIG: "{{ kubeconfig }}"
       register: deployed_image
+      when: not ansible_check_mode
 
     - name: Vérifier digest
       assert:
@@ -53,13 +61,26 @@
           - image_digest in deployed_image.stdout
         fail_msg: "ECHEC digest : attendu {{ image_digest }}, trouvé {{ deployed_image.stdout }}"
         success_msg: "OK digest confirmé"
+      when: not ansible_check_mode
+
+    - name: Vérifier registry
+      assert:
+        that:
+          - registry in deployed_image.stdout
+        fail_msg: "Registry incorrect : {{ deployed_image.stdout }}"
+        success_msg: "Registry OK : {{ deployed_image.stdout }}"
+      when: not ansible_check_mode
 
     - name: Pods sur les workers
       command: >
         kubectl get pods -l {{ app_label }}
-        -n {{ namespace }} -o wide
+        -n {{ k8s_namespace }} -o wide
       environment:
         KUBECONFIG: "{{ kubeconfig }}"
       register: pods_wide
-    - debug:
+      when: not ansible_check_mode
+
+    - name: Afficher répartition pods
+      debug:
         var: pods_wide.stdout_lines
+      when: not ansible_check_mode
