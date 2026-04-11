@@ -4,7 +4,6 @@
   gather_facts: no
   vars:
     kubeconfig: /home/vagrant/.kube/config
-    # renommé pour éviter le warning "reserved name: namespace"
     k8s_namespace: default
     app_label: app=juiceshop
     min_replicas: 2
