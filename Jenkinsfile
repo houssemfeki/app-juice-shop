@@ -10,17 +10,6 @@ pipeline {
     stages {
 
         // =============================
-        // Checkout
-        // =============================
-        stage('Checkout Code') {
-            steps {
-                deleteDir()
-                git branch: 'master',
-                    url: 'https://github.com/houssemfeki/app-juice-shop.git'
-            }
-        }
-
-        // =============================
         // Docker Build & Push
         // =============================
         stage('Docker Build & Push') {
