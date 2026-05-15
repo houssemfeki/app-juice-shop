@@ -69,7 +69,7 @@ pipeline {
                             echo "Trivy scan terminé"
 
                             curl -s -X POST \
-                                http://192.168.56.21:5678/webhook-test/trivy-scan \
+                                http://192.168.56.21:5678/webhook/trivy-scan \
                                 -H "Content-Type: application/json" \
                                 --data-binary @/tmp/trivy-latest.json
 
